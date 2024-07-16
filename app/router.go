@@ -13,6 +13,13 @@ type Router struct {
 	handlerOrder map[string]int
 }
 
+func NewRouter() Router {
+	return Router{
+		handlers:     []handlerFn{},
+		handlerOrder: make(map[string]int),
+	}
+}
+
 func (r *Router) getHandlerKey(method httpMethod, path string) string {
 	return fmt.Sprintf("%s %s", method, path)
 }

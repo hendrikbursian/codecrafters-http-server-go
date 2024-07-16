@@ -17,7 +17,7 @@ type Request struct {
 func (r *Request) String() string {
 	var out bytes.Buffer
 	out.WriteString(fmt.Sprintf("%s %s %s\r\n", r.Method, r.Path, r.Version))
-	out.WriteString("Headers:")
+	out.WriteString("Headers:\n")
 	for k, v := range r.Headers {
 		out.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))
 	}

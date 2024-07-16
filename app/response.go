@@ -8,7 +8,7 @@ import (
 type Response struct {
 	Status  httpStatus
 	Headers map[string]string
-	Body    string
+	Body    []byte
 }
 
 func (r *Response) Bytes() []byte {
@@ -20,7 +20,7 @@ func (r *Response) Bytes() []byte {
 	}
 	out.WriteString(fmt.Sprintf("Content-Length: %d\r\n", len(r.Body)))
 	out.WriteString("\r\n")
-	out.WriteString(r.Body)
+	out.Write(r.Body)
 
 	return out.Bytes()
 }
@@ -32,7 +32,7 @@ func (r *Response) String() string {
 		out.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))
 	}
 	out.WriteString("\r\n")
-	out.WriteString(r.Body)
+	out.Write(r.Body)
 
 	return out.String()
 }
