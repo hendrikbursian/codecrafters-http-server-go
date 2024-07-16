@@ -56,7 +56,6 @@ func main() {
 	} else {
 		res.WriteString(HTTP_STATUS_OK)
 	}
-	res.WriteString(" ")
 	res.WriteString("\r\n\r\n")
 
 	n, err = conn.Write(res.Bytes())
