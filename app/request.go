@@ -10,7 +10,7 @@ import (
 )
 
 type Request struct {
-	Method  httpMethod
+	Method  string
 	Version string
 	Path    string
 	Headers map[string]string
@@ -43,7 +43,7 @@ func ParseRequest(bytes []byte) Request {
 	}
 
 	ret := Request{
-		Method:  httpMethod(reqLine[0]),
+		Method:  reqLine[0],
 		Path:    reqLine[1],
 		Version: reqLine[2],
 		Headers: headers,

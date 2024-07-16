@@ -4,41 +4,48 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
-	"strconv"
+	"log"
 )
 
+var httpStatuses = map[int]string{
+	200: "OK",
+	404: "Not Found",
+	201: "Created",
+}
+
 type Response struct {
-	Status  httpStatus
+	Status  int
 	Headers map[string]string
 	Body    []byte
 }
 
-func (r Response) Bytes(gzipped bool) []byte {
-	var out bytes.Buffer
+func (r *Response) Gzip() {
+	var gzBuf bytes.Buffer
+	zw := gzip.NewWriter(&gzBuf)
 
-	out.WriteString(fmt.Sprintf("%s %d %s\r\n", HTTP_VERSION, r.Status, httpStauses[httpStatus(r.Status)]))
-
-	if gzipped {
-		var buf bytes.Buffer
-		enc := gzip.NewWriter(&buf)
-		enc.Write(r.Body)
-		enc.Close()
-
-		contentLength := strconv.Itoa(len(buf.String()))
-
-		r.Headers["Content-Length"] = contentLength
-		r.Headers["Content-Encoding"] = "gzip"
-		r.Body = buf.Bytes()
-	} else {
-		r.Headers["Content-Length"] = strconv.Itoa(len(r.Body))
+	if _, err := zw.Write(r.Body); err != nil {
+		log.Printf("Error while writing to gzip writer: %+v", err)
+		return
 	}
 
+	if err := zw.Close(); err != nil {
+		log.Printf("Error while closing gzip writer: %+v", err)
+		return
+	}
+
+	r.Body = gzBuf.Bytes()
+	r.Headers["Content-Encoding"] = "gzip"
+}
+
+func (r *Response) Bytes() []byte {
+	var out bytes.Buffer
+
+	out.WriteString(fmt.Sprintf("%s %d %s\r\n", "HTTP/1.1", r.Status, httpStatuses[r.Status]))
 	for k, v := range r.Headers {
 		out.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))
 	}
+	out.WriteString(fmt.Sprintf("%s: %d\r\n", "Content-Length", len(r.Body)))
 	out.WriteString("\r\n")
-
 	out.Write(r.Body)
-
 	return out.Bytes()
 }

@@ -20,50 +20,60 @@ func NewRouter() Router {
 	}
 }
 
-func (r *Router) getHandlerKey(method httpMethod, path string) string {
+func (r *Router) getHandlerKey(method string, path string) string {
 	return fmt.Sprintf("%s %s", method, path)
 }
-func (r *Router) addHandler(method httpMethod, path string, handler handlerFn) {
+func (r *Router) addHandler(method string, path string, handler handlerFn) {
 	r.handlerOrder[r.getHandlerKey(method, path)] = len(r.handlers)
 	r.handlers = append(r.handlers, handler)
 }
 
-func (r *Router) getHandler(method httpMethod, path string) (handler handlerFn, routeData map[string]string) {
+func validRoute(templatePath []string, path []string) bool {
+	if len(path) != len(templatePath) {
+		return false
+	}
+
+	for i := range templatePath {
+		if strings.HasPrefix(templatePath[i], ":") {
+			continue
+		}
+		if templatePath[i] == path[i] {
+			continue
+		}
+
+		return false
+	}
+
+	return true
+}
+
+func (r *Router) getHandler(method string, path string) func(req Request, res *Response) {
 	data := make(map[string]string)
 	pathSplit := strings.Split(path, "/")
 
-handlerLoop:
 	for handlerKey, idx := range r.handlerOrder {
 		handlerPath, hasPrefix := strings.CutPrefix(handlerKey, string(method)+" ")
 		if !hasPrefix {
 			continue
 		}
 
+		// check validity
 		handlerPathSplit := strings.Split(handlerPath, "/")
-		if len(pathSplit) != len(handlerPathSplit) {
+		if !validRoute(handlerPathSplit, pathSplit) {
 			continue
 		}
 
-		// check validity
-		for i := range handlerPathSplit {
-			if strings.HasPrefix(handlerPathSplit[i], ":") {
-				continue
-			}
-			if handlerPathSplit[i] == pathSplit[i] {
-				continue
-			}
-
-			continue handlerLoop
-		}
-
-		// extract data
+		// extract data from path /echo/:text -> {text: "..."}
 		for i := range len(handlerPathSplit) {
-			if after, hasPrefix := strings.CutPrefix(handlerPathSplit[i], ":"); hasPrefix {
-				data[after] = pathSplit[i]
+			if key, isDataKey := strings.CutPrefix(handlerPathSplit[i], ":"); isDataKey {
+				data[key] = pathSplit[i]
 			}
 		}
-		return r.handlers[idx], data
+
+		return func(req Request, res *Response) {
+			r.handlers[idx](req, data, res)
+		}
 	}
 
-	return nil, nil
+	return nil
 }
