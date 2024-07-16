@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"net"
 	"os"
+	"slices"
 	"strings"
 )
 
@@ -18,9 +20,6 @@ const (
 )
 
 func main() {
-	// You can use print statements as follows for debugging, they'll be visible when running tests.
-	fmt.Println("Logs from your program will appear here!")
-
 	l, err := net.Listen("tcp", "0.0.0.0:4221")
 	if err != nil {
 		fmt.Println("Failed to bind to port 4221")
@@ -41,7 +40,8 @@ func main() {
 		os.Exit(1)
 	}
 	req := string(buf[:n])
-	fmt.Println("Request: ", req)
+
+	log.Println("Request: \n", req)
 
 	reqSplit := strings.Split(req, "\r\n")
 
@@ -49,6 +49,13 @@ func main() {
 	// verb := reqLine[0]
 	path := reqLine[1]
 	// version := reqLine[2]
+
+	headerEndIdx := slices.Index(reqSplit, "")
+	headers := make(map[string]string)
+	for _, h := range reqSplit[1:headerEndIdx] {
+		hSplit := strings.Split(h, ": ")
+		headers[strings.ToLower(hSplit[0])] = hSplit[1]
+	}
 
 	var res bytes.Buffer
 
@@ -59,6 +66,16 @@ func main() {
 		res.WriteString("\r\n\r\n")
 	} else if strings.HasPrefix(path, "/echo/") {
 		body := path[6:]
+
+		res.WriteString(HTTP_STATUS_OK)
+		res.WriteString("\r\n")
+		res.WriteString(fmt.Sprintf("Content-Type: %s\r\n", CONTENT_TYPE_TEXT_PLAIN))
+		res.WriteString(fmt.Sprintf("Content-Length: %d\r\n", len(body)))
+		res.WriteString("\r\n")
+		res.WriteString(body)
+	} else if path == "/user-agent" {
+		body := headers["user-agent"]
+
 		res.WriteString(HTTP_STATUS_OK)
 		res.WriteString("\r\n")
 		res.WriteString(fmt.Sprintf("Content-Type: %s\r\n", CONTENT_TYPE_TEXT_PLAIN))
