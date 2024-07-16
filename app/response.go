@@ -21,26 +21,21 @@ func (r *Response) Bytes(gzipped bool) []byte {
 
 	if gzipped {
 		var buf bytes.Buffer
-		zw := gzip.NewWriter(&buf)
-		_, err := zw.Write(r.Body)
-		if err != nil {
-			log.Printf("Error while writing gzipped body: %+v", err)
-			goto skipzip
-		}
+		enc := gzip.NewWriter(&buf)
+		enc.Write(r.Body)
+		enc.Close()
+		log.Println(buf.String())
 
-		if err := zw.Close(); err != nil {
-			log.Printf("Error while closing gzipwriter: %+v", err)
-			goto skipzip
-		}
+		contentLength := strconv.Itoa(len(buf.String()))
+		log.Println(contentLength)
 
+		r.Headers["Content-Length"] = contentLength
 		r.Headers["Content-Encoding"] = "gzip"
-		r.Headers["Content-Length"] = strconv.Itoa(len(buf.String()))
 		r.Body = buf.Bytes()
 	} else {
 		r.Headers["Content-Length"] = strconv.Itoa(len(string(r.Body)))
 	}
 
-skipzip:
 	for k, v := range r.Headers {
 		out.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))
 	}
