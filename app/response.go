@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"log"
+	"strconv"
 )
 
 type Response struct {
@@ -15,6 +16,8 @@ type Response struct {
 
 func (r *Response) Bytes(gzipped bool) []byte {
 	var out bytes.Buffer
+
+	out.WriteString(fmt.Sprintf("%s %d %s\r\n", HTTP_VERSION, r.Status, httpStauses[httpStatus(r.Status)]))
 
 	if gzipped {
 		var buf bytes.Buffer
@@ -31,15 +34,16 @@ func (r *Response) Bytes(gzipped bool) []byte {
 		}
 
 		r.Headers["Content-Encoding"] = "gzip"
+		r.Headers["Content-Length"] = strconv.Itoa(len(buf.String()))
 		r.Body = buf.Bytes()
+	} else {
+		r.Headers["Content-Length"] = strconv.Itoa(len(string(r.Body)))
 	}
 
 skipzip:
-	out.WriteString(fmt.Sprintf("%s %d %s\r\n", HTTP_VERSION, r.Status, httpStauses[httpStatus(r.Status)]))
 	for k, v := range r.Headers {
 		out.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))
 	}
-	out.WriteString(fmt.Sprintf("Content-Length: %d\r\n", len(r.Body)))
 	out.WriteString("\r\n")
 
 	out.Write(r.Body)
