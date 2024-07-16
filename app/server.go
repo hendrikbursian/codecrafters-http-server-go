@@ -13,6 +13,9 @@ const (
 	HTTP_STATUS_NOT_FOUND = "404 Not Found"
 	HTTP_STATUS_OK        = "200 OK"
 )
+const (
+	CONTENT_TYPE_TEXT_PLAIN = "text/plain"
+)
 
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -51,12 +54,21 @@ func main() {
 
 	// response line
 	res.WriteString(HTTP_VERSION + " ")
-	if path != "/" {
-		res.WriteString(HTTP_STATUS_NOT_FOUND)
-	} else {
+	if path == "/" {
 		res.WriteString(HTTP_STATUS_OK)
+		res.WriteString("\r\n\r\n")
+	} else if strings.HasPrefix(path, "/echo/") {
+		body := path[6:]
+		res.WriteString(HTTP_STATUS_OK)
+		res.WriteString("\r\n")
+		res.WriteString(fmt.Sprintf("Content-Type: %s\r\n", CONTENT_TYPE_TEXT_PLAIN))
+		res.WriteString(fmt.Sprintf("Content-Length: %d\r\n", len(body)))
+		res.WriteString("\r\n")
+		res.WriteString(body)
+	} else {
+		res.WriteString(HTTP_STATUS_NOT_FOUND)
+		res.WriteString("\r\n\r\n")
 	}
-	res.WriteString("\r\n\r\n")
 
 	n, err = conn.Write(res.Bytes())
 	if err != nil {
