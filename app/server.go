@@ -11,7 +11,8 @@ import (
 type httpMethod string
 
 const (
-	GET httpMethod = "GET"
+	GET  httpMethod = "GET"
+	POST httpMethod = "POST"
 )
 
 type httpStatus int
@@ -19,11 +20,13 @@ type httpStatus int
 const (
 	HTTP_STATUS_NOT_FOUND httpStatus = 404
 	HTTP_STATUS_OK        httpStatus = 200
+	HTTP_STATUS_CREATED   httpStatus = 201
 )
 
 var httpStauses = map[httpStatus]string{
 	HTTP_STATUS_OK:        "OK",
 	HTTP_STATUS_NOT_FOUND: "Not Found",
+	HTTP_STATUS_CREATED:   "Created",
 }
 
 const HTTP_VERSION = "HTTP/1.1"
@@ -56,10 +59,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	routes.addHandler(GET, "/", indexHandler)
-	routes.addHandler(GET, "/echo/:text", echoHandler)
-	routes.addHandler(GET, "/files/:filename", filesHandler)
-	routes.addHandler(GET, "/user-agent", userAgentHandler)
+	routes.addHandler(GET, "/", getIndexHandler)
+	routes.addHandler(GET, "/echo/:text", getEchoHandler)
+	routes.addHandler(GET, "/files/:filename", getFilesHandler)
+	routes.addHandler(POST, "/files/:filename", postFilesHandler)
+	routes.addHandler(GET, "/user-agent", getUserAgentHandler)
 
 	for {
 		conn, err := l.Accept()
@@ -101,18 +105,18 @@ func handleConnection(conn net.Conn) {
 	}
 }
 
-func indexHandler(req Request, data Data, res *Response) {
+func getIndexHandler(req Request, data Data, res *Response) {
 	res.Status = 200
 }
 
-func echoHandler(req Request, data Data, res *Response) {
+func getEchoHandler(req Request, data Data, res *Response) {
 	fmt.Println(req.String())
 	res.Status = 200
 	res.Headers["Content-Type"] = CONTENT_TYPE_TEXT_PLAIN
 	res.Body = []byte(req.Path[6:])
 }
 
-func filesHandler(req Request, data Data, res *Response) {
+func getFilesHandler(req Request, data Data, res *Response) {
 	if env.Directory == nil {
 		res.Status = 404
 		return
@@ -136,8 +140,27 @@ func filesHandler(req Request, data Data, res *Response) {
 	res.Body = content
 }
 
-func userAgentHandler(req Request, data Data, res *Response) {
+func getUserAgentHandler(req Request, data Data, res *Response) {
 	res.Status = 200
 	res.Headers["Content-Type"] = CONTENT_TYPE_TEXT_PLAIN
 	res.Body = []byte(req.Headers["user-agent"])
+}
+
+func postFilesHandler(req Request, data Data, res *Response) {
+	if env.Directory == nil {
+		res.Status = 500
+		log.Println("Directory parameter not set!")
+		return
+	}
+
+	filepath := *env.Directory + data["filename"]
+
+	err := os.WriteFile(filepath, req.Body, 0644)
+	if err != nil {
+		log.Printf("Error writing file: %+v", err)
+		res.Status = 500
+		return
+	}
+
+	res.Status = 201
 }
