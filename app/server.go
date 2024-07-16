@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 )
 
 type httpMethod string
@@ -95,6 +96,10 @@ func handleConnection(conn net.Conn) {
 		handlerFn(req, data, &res)
 	} else {
 		res.Status = 404
+	}
+
+	if strings.Contains(req.Headers["accept-encoding"], "gzip") {
+		res.Headers["Content-Encoding"] = "gzip"
 	}
 
 	log.Println("Response:\n", string(res.Bytes()))
