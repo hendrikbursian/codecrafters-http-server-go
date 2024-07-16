@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -40,19 +41,14 @@ type Environment struct {
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
-	args := os.Args[1:]
-	env := Environment{}
+	env := Environment{
+		Directory: flag.String("directory", "", ""),
+	}
+	flag.Parse()
 
 	log.Printf("Starting server")
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "--directory":
-			if i+1 >= len(args) {
-				log.Fatalf("No such file or directory")
-			}
-			env.Directory = &args[i+1]
-			log.Printf("Directory: %s", *env.Directory)
-		}
+	if env.Directory != nil {
+		log.Printf("Directory: %s", *env.Directory)
 	}
 
 	l, err := net.Listen("tcp", "0.0.0.0:4221")
