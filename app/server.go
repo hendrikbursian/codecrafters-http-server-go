@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"slices"
 	"strings"
 )
 
@@ -98,7 +99,8 @@ func handleConnection(conn net.Conn) {
 		res.Status = 404
 	}
 
-	if strings.Contains(req.Headers["accept-encoding"], "gzip") {
+	acceptedEncodings := strings.Split(req.Headers["accept-encoding"], ", ")
+	if slices.Contains(acceptedEncodings, "gzip") {
 		res.Headers["Content-Encoding"] = "gzip"
 	}
 
