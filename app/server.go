@@ -100,13 +100,11 @@ func handleConnection(conn net.Conn) {
 	}
 
 	acceptedEncodings := strings.Split(req.Headers["accept-encoding"], ", ")
-	if slices.Contains(acceptedEncodings, "gzip") {
-		res.Headers["Content-Encoding"] = "gzip"
-	}
+	gzipped := slices.Contains(acceptedEncodings, "gzip")
 
-	log.Println("Response:\n", string(res.Bytes()))
+	log.Println("Response:\n", string(res.Bytes(gzipped)))
 
-	n, err = conn.Write(res.Bytes())
+	n, err = conn.Write(res.Bytes(gzipped))
 	if err != nil {
 		log.Println("Error sending response: ", err.Error())
 	}
