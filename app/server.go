@@ -61,7 +61,10 @@ func main() {
 		res.WriteString(HTTP_VERSION + " ")
 		if path == "/" {
 			res.WriteString(HTTP_STATUS_OK)
-			res.WriteString("\r\n\r\n")
+			res.WriteString("\r\n")
+			res.WriteString(fmt.Sprintf("Content-Type: %s\r\n", CONTENT_TYPE_TEXT_PLAIN))
+			res.WriteString(fmt.Sprintf("Content-Length: %d\r\n", 0))
+			res.WriteString("\r\n")
 		} else if strings.HasPrefix(path, "/echo/") {
 			body := path[6:]
 
