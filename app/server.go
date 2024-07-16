@@ -31,7 +31,6 @@ func main() {
 		if err != nil {
 			log.Println("Error accepting connection: ", err.Error())
 		}
-		defer conn.Close()
 
 		var buf []byte = make([]byte, 1024)
 		n, err := conn.Read(buf)
@@ -40,7 +39,7 @@ func main() {
 		}
 		req := string(buf[:n])
 
-		log.Println("Request: \n", req)
+		log.Println("Request:\n", strings.ReplaceAll(req, "\r\n", "[\\r\\n]"))
 
 		reqSplit := strings.Split(req, "\r\n")
 
@@ -86,9 +85,11 @@ func main() {
 			res.WriteString("\r\n\r\n")
 		}
 
+		log.Println("Response:\n", strings.ReplaceAll(res.String(), "\r\n", "[\\r\\n]"))
 		n, err = conn.Write(res.Bytes())
 		if err != nil {
 			log.Println("Error sending response: ", err.Error())
 		}
+		conn.Close()
 	}
 }
