@@ -32,67 +32,70 @@ func main() {
 			log.Println("Error accepting connection: ", err.Error())
 		}
 
-		var buf []byte = make([]byte, 1024)
-		n, err := conn.Read(buf)
-		if err != nil {
-			log.Println("Error reading request: ", err.Error())
-		}
-		req := string(buf[:n])
+		go handleConnection(conn)
+	}
+}
 
-		log.Println("Request:\n", strings.ReplaceAll(req, "\r\n", "[\\r\\n]"))
+func handleConnection(conn net.Conn) {
+	defer conn.Close()
 
-		reqSplit := strings.Split(req, "\r\n")
+	var buf []byte = make([]byte, 1024)
+	n, err := conn.Read(buf)
+	if err != nil {
+		log.Println("Error reading request: ", err.Error())
+	}
+	req := string(buf[:n])
 
-		reqLine := strings.Split(reqSplit[0], " ")
-		// verb := reqLine[0]
-		path := reqLine[1]
-		// version := reqLine[2]
+	log.Println("Request:\n", strings.ReplaceAll(req, "\r\n", "[\\r\\n]"))
 
-		headerEndIdx := slices.Index(reqSplit, "")
-		headers := make(map[string]string)
-		for _, h := range reqSplit[1:headerEndIdx] {
-			hSplit := strings.Split(h, ": ")
-			headers[strings.ToLower(hSplit[0])] = hSplit[1]
-		}
+	reqSplit := strings.Split(req, "\r\n")
 
-		var res bytes.Buffer
+	reqLine := strings.Split(reqSplit[0], " ")
+	// verb := reqLine[0]
+	path := reqLine[1]
+	// version := reqLine[2]
 
-		// response line
-		res.WriteString(HTTP_VERSION + " ")
-		if path == "/" {
-			res.WriteString(HTTP_STATUS_OK)
-			res.WriteString("\r\n")
-			res.WriteString(fmt.Sprintf("Content-Type: %s\r\n", CONTENT_TYPE_TEXT_PLAIN))
-			res.WriteString(fmt.Sprintf("Content-Length: %d\r\n", 0))
-			res.WriteString("\r\n")
-		} else if strings.HasPrefix(path, "/echo/") {
-			body := path[6:]
+	headerEndIdx := slices.Index(reqSplit, "")
+	headers := make(map[string]string)
+	for _, h := range reqSplit[1:headerEndIdx] {
+		hSplit := strings.Split(h, ": ")
+		headers[strings.ToLower(hSplit[0])] = hSplit[1]
+	}
 
-			res.WriteString(HTTP_STATUS_OK)
-			res.WriteString("\r\n")
-			res.WriteString(fmt.Sprintf("Content-Type: %s\r\n", CONTENT_TYPE_TEXT_PLAIN))
-			res.WriteString(fmt.Sprintf("Content-Length: %d\r\n", len(body)))
-			res.WriteString("\r\n")
-			res.WriteString(body)
-		} else if path == "/user-agent" {
-			body := headers["user-agent"]
+	var res bytes.Buffer
 
-			res.WriteString(HTTP_STATUS_OK)
-			res.WriteString("\r\n")
-			res.WriteString(fmt.Sprintf("Content-Type: %s\r\n", CONTENT_TYPE_TEXT_PLAIN))
-			res.WriteString(fmt.Sprintf("Content-Length: %d\r\n", len(body)))
-			res.WriteString("\r\n")
-			res.WriteString(body)
-		} else {
-			res.WriteString(HTTP_STATUS_NOT_FOUND)
-			res.WriteString("\r\n\r\n")
-		}
+	// response line
+	res.WriteString(HTTP_VERSION + " ")
+	if path == "/" {
+		res.WriteString(HTTP_STATUS_OK)
+		res.WriteString("\r\n")
+		res.WriteString("\r\n")
+	} else if strings.HasPrefix(path, "/echo/") {
+		body := path[6:]
 
-		log.Println("Response:\n", strings.ReplaceAll(res.String(), "\r\n", "[\\r\\n]"))
-		n, err = conn.Write(res.Bytes())
-		if err != nil {
-			log.Println("Error sending response: ", err.Error())
-		}
-		conn.Close()
+		res.WriteString(HTTP_STATUS_OK)
+		res.WriteString("\r\n")
+		res.WriteString(fmt.Sprintf("Content-Type: %s\r\n", CONTENT_TYPE_TEXT_PLAIN))
+		res.WriteString(fmt.Sprintf("Content-Length: %d\r\n", len(body)))
+		res.WriteString("\r\n")
+		res.WriteString(body)
+	} else if path == "/user-agent" {
+		body := headers["user-agent"]
+
+		res.WriteString(HTTP_STATUS_OK)
+		res.WriteString("\r\n")
+		res.WriteString(fmt.Sprintf("Content-Type: %s\r\n", CONTENT_TYPE_TEXT_PLAIN))
+		res.WriteString(fmt.Sprintf("Content-Length: %d\r\n", len(body)))
+		res.WriteString("\r\n")
+		res.WriteString(body)
+	} else {
+		res.WriteString(HTTP_STATUS_NOT_FOUND)
+		res.WriteString("\r\n\r\n")
+	}
+
+	log.Println("Response:\n", strings.ReplaceAll(res.String(), "\r\n", "[\\r\\n]"))
+	n, err = conn.Write(res.Bytes())
+	if err != nil {
+		log.Println("Error sending response: ", err.Error())
 	}
 }
