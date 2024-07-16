@@ -33,6 +33,9 @@ const (
 )
 
 var routes Router = NewRouter()
+var env Environment = Environment{
+	Directory: flag.String("directory", "", ""),
+}
 
 type Environment struct {
 	Directory *string
@@ -40,10 +43,6 @@ type Environment struct {
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
-
-	env := Environment{
-		Directory: flag.String("directory", "", ""),
-	}
 	flag.Parse()
 
 	log.Printf("Starting server")
@@ -57,39 +56,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	routes.addHandler(GET, "/", func(req Request, data Data, res *Response) {
-		res.Status = 200
-	})
-
-	routes.addHandler(GET, "/echo/:text", func(req Request, data Data, res *Response) {
-		fmt.Println(req.String())
-		res.Status = 200
-		res.Headers["Content-Type"] = CONTENT_TYPE_TEXT_PLAIN
-		res.Body = []byte(req.Path[6:])
-	})
-
-	routes.addHandler(GET, "/files/:filename", func(req Request, data Data, res *Response) {
-		if env.Directory != nil {
-			filePath := *env.Directory + data["filename"]
-
-			data, err := os.ReadFile(filePath)
-			if err != nil {
-				log.Printf("Cannot read file: %+v", err)
-				res.Status = 500
-				return
-			}
-
-			res.Status = 200
-			res.Headers["Content-Type"] = CONTENT_TYPE_APPLICATION_OCTET_STREAM
-			res.Body = data
-		}
-	})
-
-	routes.addHandler(GET, "/user-agent", func(req Request, data Data, res *Response) {
-		res.Status = 200
-		res.Headers["Content-Type"] = CONTENT_TYPE_TEXT_PLAIN
-		res.Body = []byte(req.Headers["user-agent"])
-	})
+	routes.addHandler(GET, "/", indexHandler)
+	routes.addHandler(GET, "/echo/:text", echoHandler)
+	routes.addHandler(GET, "/files/:filename", filesHandler)
+	routes.addHandler(GET, "/user-agent", userAgentHandler)
 
 	for {
 		conn, err := l.Accept()
@@ -123,10 +93,51 @@ func handleConnection(conn net.Conn) {
 		res.Status = 404
 	}
 
-	log.Println("Response:\n", res.String())
+	log.Println("Response:\n", string(res.Bytes()))
 
 	n, err = conn.Write(res.Bytes())
 	if err != nil {
 		log.Println("Error sending response: ", err.Error())
 	}
+}
+
+func indexHandler(req Request, data Data, res *Response) {
+	res.Status = 200
+}
+
+func echoHandler(req Request, data Data, res *Response) {
+	fmt.Println(req.String())
+	res.Status = 200
+	res.Headers["Content-Type"] = CONTENT_TYPE_TEXT_PLAIN
+	res.Body = []byte(req.Path[6:])
+}
+
+func filesHandler(req Request, data Data, res *Response) {
+	if env.Directory == nil {
+		res.Status = 404
+		return
+	}
+
+	filePath := *env.Directory + data["filename"]
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			res.Status = 404
+			return
+		}
+
+		log.Printf("Cannot read file: %+v", err)
+		res.Status = 500
+		return
+	}
+
+	res.Status = 200
+	res.Headers["Content-Type"] = CONTENT_TYPE_APPLICATION_OCTET_STREAM
+	res.Body = content
+}
+
+func userAgentHandler(req Request, data Data, res *Response) {
+	res.Status = 200
+	res.Headers["Content-Type"] = CONTENT_TYPE_TEXT_PLAIN
+	res.Body = []byte(req.Headers["user-agent"])
 }
